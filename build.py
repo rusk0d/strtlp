@@ -149,12 +149,18 @@ def write_index(state):
     rest = articles[3:] if len(articles) > 3 else []
 
     featured_html = "\n".join(
-        f'<li class="featured-item"><a href="{a["slug"]}.html"><span class="label">Kiemelt</span><h3>{html.escape(a["title"])}</h3><span class="date">{a["date"]}</span></a></li>'
+        f'<li class="featured-item"><a href="{a["slug"]}.html"><span class="label">Kiemelt</span><h3>{html.escape(a["title"])}</h3><span class="date">{a["date"]}</span><a href="{html.escape(a.get("url", ""))}" class="source-small" target="_blank">→ startlap</a></a></li>'
         for a in featured
     )
 
+    def thumb_html(a):
+        img = a.get("image", "")
+        if img:
+            return f'<img src="{html.escape(img)}" alt="" class="thumb-img" loading="lazy" style="width:100%;height:100%;object-fit:cover">'
+        return '<div class="thumb">📰</div>'
+
     grid_html = "\n".join(
-        f'<li class="grid-item"><a href="{a["slug"]}.html"><div class="thumb">📰</div><h4>{html.escape(a["title"][:60])}</h4><span class="date">{a["date"]}</span></a></li>'
+        f'<li class="grid-item"><a href="{a["slug"]}.html"><div class="thumb">{thumb_html(a)}</div><h4>{html.escape(a["title"][:60])}</h4><span class="date">{a["date"]}</span></a></li>'
         for a in rest
     )
 
@@ -181,10 +187,13 @@ body{{font:14px/1.5 Arial,sans-serif;background:#a8c5dd;color:#333}}
 .grid-section{{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;background:white;padding:12px;border-radius:4px}}
 .grid-item{{list-style:none;text-align:center;transition:all 0.2s}}
 .grid-item a{{text-decoration:none;color:inherit;display:flex;flex-direction:column;padding:8px}}
-.grid-item .thumb{{font-size:40px;height:60px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;border-radius:3px;margin-bottom:8px}}
+.grid-item .thumb{{width:100%;height:60px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;border-radius:3px;margin-bottom:8px;overflow:hidden}}
+.thumb-img{{width:100%;height:100%;object-fit:cover}}
 .grid-item h4{{font-size:12px;font-weight:bold;color:#333;line-height:1.3;text-align:left}}
 .grid-item .date{{font-size:10px;color:#999;margin-top:4px;text-align:left}}
 .grid-item:hover{{background:#f9f9f9;padding:8px}}
+.source-small{{font-size:10px;color:#0066cc;text-decoration:none;margin-left:auto;display:block;text-align:right;padding-top:4px}}
+.source-small:hover{{text-decoration:underline}}
 .sidebar{{background:white;border-radius:4px;padding:12px;height:fit-content;position:sticky;top:20px}}
 .sidebar-title{{font-size:13px;font-weight:bold;color:#333;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #f39200}}
 .weather-box{{background:#f0f0f0;padding:12px;border-radius:3px;text-align:center;margin-bottom:12px}}
@@ -271,7 +280,7 @@ def main():
         slug = make_slug(url, existing_slugs)
         existing_slugs.add(slug)
         (OUT / f"{slug}.html").write_text(render(a, url), encoding="utf-8")
-        state[url] = {"slug": slug, "title": a["title"], "date": a["date"] or pub[:10]}
+        state[url] = {"slug": slug, "title": a["title"], "date": a["date"] or pub[:10], "image": a["image"], "url": url}
         fetched += 1
         time.sleep(DELAY_S)
     # drop articles older than KEEP_DAYS so the index and folder stay small
