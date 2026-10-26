@@ -280,6 +280,19 @@ def main():
         (OUT / f"{state[url]['slug']}.html").unlink(missing_ok=True)
         del state[url]
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    # regenerate all article pages (in case they were deleted or it's first build of new design)
+    for url in state:
+        slug = state[url]["slug"]
+        if not (OUT / f"{slug}.html").exists():
+            try:
+                a = parse(fetch(url))
+                if a["title"]:
+                    (OUT / f"{slug}.html").write_text(render(a, url), encoding="utf-8")
+                    time.sleep(0.5)
+            except Exception:
+                pass
+
     write_index(state)
     print(f"fetched {fetched} new, {len(state)} articles in index")
 
