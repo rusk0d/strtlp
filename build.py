@@ -42,17 +42,17 @@ def parse(page):
     ld = re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S)
     graph = json.loads(ld.group(1)).get("@graph", []) if ld else []
     news = next((n for n in graph if n.get("@type") == "NewsArticle"), {})
-    img = re.search(r'<meta property="og:image" content="([^"]+)"', page)
+    img = re.search(r'<meta\s+(?:property="og:image"\s+content="([^"]+)"|content="([^"]+)"\s+property="og:image")', page)
     paras = []
-    for body in re.findall(r"<p(?:\s[^>]*)?>(.*?)</p>", page, re.S):
+    for body in re.findall(r"<p(?:\s[^>]*)?>(.*?)</p>", page, re.S | re.IGNORECASE):
         text = html.unescape(re.sub(r"<[^>]+>", "", body)).strip()
-        if len(text) >= 60 and "cookie" not in text.lower():
+        if len(text) >= 60 and not (re.search(r'\bcookie(?:s)?\b', text, re.IGNORECASE) and len(text) < 200):
             paras.append(body)
     return {
         "title": html.unescape(news.get("headline", "")),
         "lead": html.unescape(news.get("description", "")),
         "date": news.get("datePublished", "")[:10],
-        "image": img.group(1) if img else "",
+        "image": (img.group(1) or img.group(2)) if img else "",
         "paras": paras,
     }
 
@@ -101,6 +101,17 @@ HEADER = """<header class="top">
 </script>"""
 
 
+def make_slug(url, existing_slugs):
+    """Generate unique slug from URL, avoiding collisions."""
+    base = url.rstrip("/").rsplit("/", 1)[-1] or "index"
+    slug = base
+    counter = 1
+    while slug in existing_slugs:
+        slug = f"{base}-{counter}"
+        counter += 1
+    return slug
+
+
 def write_index(state):
     rows = "\n".join(
         f'<li><a href="{s["slug"]}.html">{html.escape(s["title"])}</a> <small>{s["date"]}</small></li>'
@@ -123,16 +134,21 @@ def write_index(state):
 def main():
     OUT.mkdir(exist_ok=True)
     state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
+    existing_slugs = {s["slug"] for s in state.values()}
     fetched = 0
     for url, pub in sitemap_entries().items():
         if url in state:
             continue
-        slug = url.rstrip("/").rsplit("/", 1)[-1] or "index"
         try:
             a = parse(fetch(url))
         except Exception as e:  # keep going if one article fails
             print("skip", url, e)
             continue
+        if not a["title"]:
+            print("skip", url, "no title")
+            continue
+        slug = make_slug(url, existing_slugs)
+        existing_slugs.add(slug)
         (OUT / f"{slug}.html").write_text(render(a, url), encoding="utf-8")
         state[url] = {"slug": slug, "title": a["title"], "date": a["date"] or pub[:10]}
         fetched += 1
