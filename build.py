@@ -59,44 +59,76 @@ def parse(page):
 
 def render(a, url):
     body = "\n".join(f"<p>{p}</p>" for p in a["paras"])
-    img = f'<img src="{html.escape(a["image"])}" alt="">' if a["image"] else ""
+    img_html = f'<div class="hero"><img src="{html.escape(a["image"])}" alt="Cikk képe"></div>' if a["image"] else '<div class="hero-placeholder">📰</div>'
     return f"""<!doctype html><html lang="hu"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(a["title"])}</title>
-<style>body{{font:18px/1.6 system-ui,sans-serif;max-width:680px;margin:auto;padding:16px}}
-img{{max-width:100%;height:auto}}a{{color:#0a58ca}}</style>
-<p><a href="index.html">← Vissza</a></p>
+<style>*{{margin:0;padding:0;box-sizing:border-box}}
+body{{font:17px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f5f7fa;color:#2c3e50}}
+.back-nav{{position:sticky;top:0;background:white;border-bottom:1px solid #e5e8ec;padding:12px 20px;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,0.04)}}
+.back{{display:inline-flex;align-items:center;gap:6px;color:#0066cc;text-decoration:none;font-weight:500;transition:all 0.2s}}
+.back:hover{{gap:10px}}
+.back::before{{content:"←"}}
+.hero{{width:100%;height:400px;background:#e5e8ec;overflow:hidden;display:flex;align-items:center;justify-content:center}}
+.hero img{{width:100%;height:100%;object-fit:cover}}
+.hero-placeholder{{font-size:120px;color:#bbb}}
+article{{max-width:760px;margin:0 auto;background:white;margin-top:-40px;position:relative;border-radius:12px;padding:48px 40px;box-shadow:0 4px 16px rgba(0,0,0,0.08)}}
+h1{{font-size:36px;line-height:1.25;margin-bottom:16px;color:#1a1a1a;letter-spacing:-0.5px}}
+.meta{{display:flex;gap:12px;align-items:center;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid #e5e8ec;font-size:13px;color:#7f8c8d;text-transform:uppercase;letter-spacing:0.5px}}
+.meta span::before{{content:"📅"}}
+.lead{{font-size:20px;font-weight:500;color:#34495e;margin-bottom:32px;line-height:1.6;border-left:4px solid #0066cc;padding-left:16px}}
+.content{{color:#2c3e50}}
+p{{margin-bottom:20px;text-align:justify}}
+p:first-of-type{{font-weight:500;font-size:18px;color:#34495e}}
+a{{color:#0066cc;text-decoration:none;border-bottom:1px solid #cce5ff;transition:all 0.2s}}
+a:hover{{border-bottom-color:#0066cc;background:#f0f6ff;padding:0 2px}}
+.source{{margin-top:40px;padding-top:20px;border-top:2px solid #e5e8ec;text-align:center;font-size:14px}}
+.source a{{display:inline-flex;align-items:center;gap:6px;background:#0066cc;color:white;padding:10px 16px;border-radius:6px;border:none}}
+.source a:hover{{background:#0052a3;border:none;background-color:#0052a3;padding:10px 16px}}</style>
+<nav class="back-nav"><a href="index.html" class="back">Vissza</a></nav>
+{img_html}
+<article>
 <h1>{html.escape(a["title"])}</h1>
-<p><em>{html.escape(a["date"])}</em></p>
-<p><strong>{html.escape(a["lead"])}</strong></p>
-{img}
-{body}
-<p><a href="{html.escape(url)}">Eredeti cikk</a></p>
+<div class="meta"><span>{html.escape(a["date"])}</span></div>
+<p class="lead">{html.escape(a["lead"])}</p>
+<div class="content">{body}</div>
+<div class="source"><a href="{html.escape(url)}" target="_blank">Eredeti cikk olvasása →</a></div>
+</article>
 """
 
 
 HEADER = """<header class="top">
+<div class="header-content">
+<div class="header-top-row">
+<h1 class="title">📰 Hírek</h1>
+<div id="weather" class="weather-widget">
+<div class="weather-loading">Időjárás…</div>
+</div>
+</div>
+<div class="header-tools">
 <form action="https://www.google.com/search" method="get" role="search">
-<input type="search" name="q" placeholder="Keresés a Google-ban" aria-label="Keresés" required>
-<button type="submit">Keresés</button>
+<input type="search" name="q" placeholder="Keresés a Google-ban…" aria-label="Keresés" required>
+<button type="submit">🔍</button>
 </form>
-<div id="weather" class="weather">Időjárás betöltése…</div>
+</div>
+</div>
 </header>
 <script>
 (function () {
   var box = document.getElementById("weather");
-  var names = {0: "derült", 1: "túlnyomóan derült", 2: "részben felhős", 3: "borult",
-    45: "köd", 48: "zúzmarás köd", 51: "gyenge szitálás", 53: "szitálás", 55: "erős szitálás",
-    61: "gyenge eső", 63: "eső", 65: "erős eső", 71: "gyenge havazás", 73: "havazás",
-    75: "erős havazás", 80: "zápor", 81: "erős zápor", 82: "heves zápor", 95: "zivatar"};
-  // Budapest; change latitude/longitude for another town
+  var icons = {
+    0: "☀️", 1: "🌤", 2: "⛅", 3: "☁️",
+    45: "🌫", 48: "🌫", 51: "🌦", 53: "🌦", 55: "🌧",
+    61: "🌧", 63: "🌧", 65: "⛈", 71: "❄️", 73: "❄️",
+    75: "❄️", 80: "🌦", 81: "⛈", 82: "⛈", 95: "⛈"
+  };
   var url = "https://api.open-meteo.com/v1/forecast?latitude=47.4979&longitude=19.0402" +
     "&current=temperature_2m,weather_code&timezone=Europe%2FBudapest";
   fetch(url).then(function (r) { return r.json(); }).then(function (d) {
     var c = d.current;
-    box.textContent = "Budapest: " + Math.round(c.temperature_2m) + " °C, " +
-      (names[c.weather_code] || "");
-  }).catch(function () { box.textContent = "Az időjárás most nem elérhető."; });
+    var icon = icons[c.weather_code] || "🌡";
+    box.innerHTML = '<div class="weather-content"><span class="weather-icon">' + icon + '</span><span class="weather-temp">' + Math.round(c.temperature_2m) + '°</span></div>';
+  }).catch(function () { box.innerHTML = '<span class="weather-icon">—</span>'; });
 })();
 </script>"""
 
@@ -114,19 +146,39 @@ def make_slug(url, existing_slugs):
 
 def write_index(state):
     rows = "\n".join(
-        f'<li><a href="{s["slug"]}.html">{html.escape(s["title"])}</a> <small>{s["date"]}</small></li>'
+        f'<li><a href="{s["slug"]}.html" class="article-link"><span class="title">{html.escape(s["title"])}</span><span class="date">{s["date"]}</span></a></li>'
         for s in sorted(state.values(), key=lambda s: s["date"], reverse=True)
     )
     (OUT / "index.html").write_text(
         f"""<!doctype html><html lang="hu"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hírek</title>
-<style>body{{font:18px/1.5 system-ui,sans-serif;max-width:680px;margin:auto;padding:16px}}li{{margin:.6em 0}}
-.top{{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}}
-.top form{{display:flex;gap:8px}}.top input{{flex:1;font:inherit;padding:8px}}
-.top button{{font:inherit;padding:8px 14px}}.weather{{color:#555;font-size:16px}}</style>
+<style>*{{margin:0;padding:0;box-sizing:border-box}}
+body{{font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:linear-gradient(135deg,#f5f7fa 0%,#fafbfc 100%);color:#2c3e50}}
+.top{{background:white;border-bottom:1px solid #e5e8ec;padding:24px 20px;position:sticky;top:0;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,0.04)}}
+.header-content{{max-width:760px;margin:0 auto}}
+.header-top-row{{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}}
+.title{{font-size:32px;font-weight:800;color:#1a1a1a;letter-spacing:-0.5px}}
+.weather-widget{{background:#f0f3f7;border-radius:12px;padding:8px 16px;min-width:90px}}
+.weather-content{{display:flex;align-items:center;gap:8px;justify-content:center}}
+.weather-icon{{font-size:28px;line-height:1}}
+.weather-temp{{font-size:20px;font-weight:700;color:#2c3e50}}
+.weather-loading{{color:#999;font-size:12px;text-align:center}}
+.header-tools{{display:flex;gap:12px}}
+.top form{{display:flex;gap:8px;flex:0 1 320px}}
+.top input{{flex:1;padding:10px 14px;border:2px solid #e5e8ec;border-radius:8px;font:inherit;transition:border-color 0.2s}}
+.top input:focus{{outline:none;border-color:#0066cc}}
+.top button{{padding:10px 14px;background:#0066cc;color:white;border:none;border-radius:8px;cursor:pointer;font-size:18px;transition:background 0.2s}}
+.top button:hover{{background:#0052a3}}
+.container{{max-width:760px;margin:0 auto;padding:24px 20px}}
+ul{{list-style:none}}
+li{{margin-bottom:10px}}
+.article-link{{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;background:white;border-radius:10px;text-decoration:none;color:inherit;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);border:2px solid transparent;border-left:4px solid transparent}}
+.article-link:hover{{background:#f8fafc;border-left-color:#0066cc;border-color:#e5e8ec;box-shadow:0 4px 12px rgba(0,102,204,0.1);transform:translateX(4px)}}
+.article-link .title{{font-weight:600;color:#0066cc;flex:1;font-size:16px}}
+.article-link .date{{color:#999;font-size:13px;flex-shrink:0;margin-left:16px;letter-spacing:0.3px}}</style>
 {HEADER}
-<h1>Hírek</h1><ul>{rows}</ul>""",
+<div class="container"><ul>{rows}</ul></div>""",
         encoding="utf-8",
     )
 
