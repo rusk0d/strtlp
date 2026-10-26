@@ -1,0 +1,12 @@
+# Site domain: strlp.ruskodavid.hu (DNS A record -> VPS IP).
+# Caddy gets the HTTPS certificate automatically.
+strlp.ruskodavid.hu {
+	encode gzip
+	basicauth {
+		# user name, then a bcrypt hash from: caddy hash-password
+		family $2a$14$REPLACE_WITH_HASH_FROM_caddy_hash-password
+	}
+	root * /srv/startlap/site
+	file_server
+	header X-Robots-Tag "noindex, nofollow"
+}

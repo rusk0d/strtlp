@@ -1,0 +1,2 @@
+# Runs the builder every 30 minutes as the startlap user. Add with: sudo crontab -u startlap -e
+*/30 * * * * cd /srv/startlap && /usr/bin/python3 -I build.py >> /var/log/startlap.log 2>&1
